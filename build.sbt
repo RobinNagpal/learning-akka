@@ -10,7 +10,9 @@ val common = Seq(
   libraryDependencies ++= Seq(
     "joda-time" % "joda-time" % "2.10.1",
     "org.scalactic" %% "scalactic" % "3.0.5",
-    "org.scalatest" %% "scalatest" % "3.0.5" % "test"
+    "com.typesafe.akka" %% "akka-actor" % "2.5.19",
+    "org.scalatest" %% "scalatest" % "3.0.5" % Test,
+    "com.typesafe.akka" %% "akka-testkit" % "2.5.19" % Test
   )
 )
 
@@ -21,15 +23,17 @@ lazy val hello_root = (project in file("."))
   .settings(
     publishArtifact := false
   )
-  .aggregate(akka_actors)
+  .aggregate(akka_actors, fsm)
 
-// main standalone app subproject, source code in ./myapp/
-lazy val akka_actors  = (project in file("akka-actors"))
+lazy val akka_actors = (project in file("akka-actors"))
   .settings(common)
   .settings(
-    name := "akka-actors", // my-app_2.12-1.0.0.jar
-    libraryDependencies ++= Seq(
-      "com.typesafe.akka" %% "akka-actor" % "2.5.19",
-      "com.typesafe.akka" %% "akka-testkit" % "2.5.19" % Test
-    )
+    name := "akka-actors"
+  )
+
+lazy val fsm = (project in file("fsm"))
+  .settings(common)
+  .settings(
+    name := "fsm",
+    libraryDependencies ++= Seq()
   )
