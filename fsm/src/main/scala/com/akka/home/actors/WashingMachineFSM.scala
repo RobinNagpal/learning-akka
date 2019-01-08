@@ -31,43 +31,51 @@ final case class PowerConsumption(
     powerConsumptionMap: Map[DateTime, Int]
 ) extends Data
 
-class WashingMachineActor(name: String) extends FSM[State, Data] with ActorLogging {
+class WashingMachineFSM(name: String) extends FSM[State, Data] with ActorLogging {
   val r = new scala.util.Random
 
   startWith(Idle, Uninitialized)
 
   val commonHandlers: StateFunction = {
-    case Event(WashingMachineActor.GetCurrentState, _) => {
+    case Event(WashingMachineFSM.GetCurrentState, _) => {
       returnCurrentState()
       stay
     }
-    case Event(WashingMachineActor.GetTotalPowerConsumption, _) => {
+    case Event(WashingMachineFSM.GetTotalPowerConsumption, _) => {
       returnTotalPowerConsumption()
       stay
     }
   }
 
   val idealStateHandlers: StateFunction = {
-    case Event(WashingMachineActor.StartNewLoad(power, _), Uninitialized) ⇒
-      goto(Running) using PowerConsumption(currentState = DeviceState.ON, powerLevel = power, powerConsumptionMap = Map.empty)
+    case Event(WashingMachineFSM.StartNewLoad(power, _), Uninitialized) ⇒ {
+      if (power == PowerLevel.FLUCTUATING) {
+        goto(Stopped)
+      } else {
+        goto(Running) using PowerConsumption(currentState = DeviceState.ON, powerLevel = power, powerConsumptionMap = Map.empty)
+      }
+    }
+
   }
 
   val runningStateHandlers: StateFunction = {
-    case Event(WashingMachineActor.CapturePowerConsumption(consumption, time), PowerConsumption(currentState, power, consumptionMap)) =>
+    case Event(WashingMachineFSM.CapturePowerConsumption(consumption, time), PowerConsumption(currentState, power, consumptionMap)) =>
       if (consumption > 50) {
         log.error(s"${consumption} exceeds the maximum allowed consumption of 50")
-        goto(Stopped)
+        throw new IllegalArgumentException(s"${consumption} exceeds the maximum allowed consumption of 50")
       } else {
         stay using PowerConsumption(currentState = currentState, powerLevel = power, powerConsumptionMap = consumptionMap + (time -> consumption))
       }
 
-    case Event(WashingMachineActor.FinishCurrentLoad, _) => goto(Idle)
+    case Event(WashingMachineFSM.FinishCurrentLoad, _) => goto(Idle)
 
   }
 
   when(Idle)(commonHandlers orElse idealStateHandlers)
 
   when(Running)(commonHandlers orElse runningStateHandlers)
+
+  when(Stopped)(commonHandlers)
 
   whenUnhandled {
     case Event(e, s) ⇒
@@ -83,12 +91,12 @@ class WashingMachineActor(name: String) extends FSM[State, Data] with ActorLoggi
           val powerConsumption = r.nextInt(50)
           val timeNow = DateTime.now()
           log.info(s"recording power consumption of ${powerConsumption} at ${timeNow}")
-          self ! WashingMachineActor.CapturePowerConsumption(powerConsumption, timeNow)
+          self ! WashingMachineFSM.CapturePowerConsumption(powerConsumption, timeNow)
         }
       }
 
-    case Running -> Stopped =>
-      context.stop(self)
+    case _ -> Stopped => context.stop(self)
+
   }
 
   initialize()
@@ -103,9 +111,9 @@ class WashingMachineActor(name: String) extends FSM[State, Data] with ActorLoggi
 
 }
 
-object WashingMachineActor {
+object WashingMachineFSM {
 
-  def props(name: String): Props = Props(new WashingMachineActor(name = name))
+  def props(name: String): Props = Props(new WashingMachineFSM(name = name))
 
   case class StartNewLoad(
       level: PowerLevel.Value,

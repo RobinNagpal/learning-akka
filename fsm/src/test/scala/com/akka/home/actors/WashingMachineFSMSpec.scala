@@ -8,7 +8,7 @@ import com.akka.home.{DeviceState, PowerLevel}
 
 import scala.concurrent.duration.DurationLong
 
-class WashingMachineActorSpec extends TestKit(ActorSystem("MySpec")) with ImplicitSender
+class WashingMachineFSMSpec extends TestKit(ActorSystem("MySpec")) with ImplicitSender
   with WordSpecLike with Matchers with BeforeAndAfterAll{
 
   override def afterAll: Unit = {
@@ -18,9 +18,9 @@ class WashingMachineActorSpec extends TestKit(ActorSystem("MySpec")) with Implic
   implicit val timeout: Timeout = Timeout(5 seconds)
 
   private case class StartedMachineSUT(){
-    val washingMachine = system.actorOf(WashingMachineActor.props("Samsung"))
+    val washingMachine = system.actorOf(WashingMachineFSM.props("Samsung"))
 
-    washingMachine ! WashingMachineActor.StartNewLoad(
+    washingMachine ! WashingMachineFSM.StartNewLoad(
       level = PowerLevel.HIGH
     )
   }
@@ -29,52 +29,52 @@ class WashingMachineActorSpec extends TestKit(ActorSystem("MySpec")) with Implic
 
     "start with proper state" in {
       val washingMachineSUT = StartedMachineSUT()
-      washingMachineSUT.washingMachine ! WashingMachineActor.GetCurrentState
+      washingMachineSUT.washingMachine ! WashingMachineFSM.GetCurrentState
       expectMsg(DeviceState.ON)
     }
 
     "return correct power consumption" in {
       val washingMachine = StartedMachineSUT().washingMachine
-      washingMachine ! WashingMachineActor.GetTotalPowerConsumption
+      washingMachine ! WashingMachineFSM.GetTotalPowerConsumption
       expectMsg(0)
 
 
-      washingMachine ! WashingMachineActor.CapturePowerConsumption(consumption = 25)
-      washingMachine ! WashingMachineActor.GetTotalPowerConsumption
+      washingMachine ! WashingMachineFSM.CapturePowerConsumption(consumption = 25)
+      washingMachine ! WashingMachineFSM.GetTotalPowerConsumption
       expectMsg(25)
     }
 
     "actor should restart if consumption is too high" in {
       val washingMachine = StartedMachineSUT().washingMachine
 
-      washingMachine ! WashingMachineActor.GetTotalPowerConsumption
+      washingMachine ! WashingMachineFSM.GetTotalPowerConsumption
       expectMsg(0)
 
 
-      washingMachine ! WashingMachineActor.CapturePowerConsumption(consumption = 25)
-      washingMachine ! WashingMachineActor.GetTotalPowerConsumption
+      washingMachine ! WashingMachineFSM.CapturePowerConsumption(consumption = 25)
+      washingMachine ! WashingMachineFSM.GetTotalPowerConsumption
       expectMsg(25)
 
-      washingMachine ! WashingMachineActor.CapturePowerConsumption(consumption = 500)
+      washingMachine ! WashingMachineFSM.CapturePowerConsumption(consumption = 500)
 
-      washingMachine ! WashingMachineActor.GetCurrentState
+      washingMachine ! WashingMachineFSM.GetCurrentState
       expectMsgPF(){
         case DeviceState.OFF => ()
         case _ => fail
       }
 
-      washingMachine ! WashingMachineActor.GetTotalPowerConsumption
+      washingMachine ! WashingMachineFSM.GetTotalPowerConsumption
       expectMsg(0)
     }
 
     "actor should stop id the power is fluctuating" in {
       val probe = TestProbe()
 
-      val washingMachine = system.actorOf(WashingMachineActor.props("Samsung"))
+      val washingMachine = system.actorOf(WashingMachineFSM.props("Samsung"))
 
 
       probe watch washingMachine
-      washingMachine ! WashingMachineActor.StartNewLoad(
+      washingMachine ! WashingMachineFSM.StartNewLoad(
         level = PowerLevel.FLUCTUATING
       )
 
