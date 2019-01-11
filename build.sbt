@@ -49,6 +49,10 @@ lazy val persistence = (project in file("persistence"))
     libraryDependencies ++= Seq(
       guice,
       "com.typesafe.akka" %% "akka-persistence" % AKKA_VERSION,
+      "org.fusesource.leveldbjni" % "leveldbjni-all" % "1.8",
       "org.scalatestplus.play" %% "scalatestplus-play" % "3.1.2" % Test
     )
+  ).settings(
+    javaOptions in Test += "-Dconfig.file=conf/application.test.conf"
   )
+

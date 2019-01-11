@@ -1,103 +1,136 @@
 package com.akka.home.actors
 
 import com.akka.home.{DeviceState, PowerLevel}
-import akka.actor.{Actor, ActorLogging, Props}
+import akka.actor.{ActorLogging, Props}
 import akka.persistence.PersistentActor
 import org.joda.time.DateTime
-
-import scala.collection.mutable
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 
+class WashingMachinePersistentActor(name: String) extends PersistentActor with ActorLogging {
+  import WashingMachinePersistentActor._
 
-class WashingMachinePersistentActor(name: String) extends PersistentActor with ActorLogging{
+  case class WashingMachineState(
+      currentState: DeviceState.Value,
+      powerConsumptionMap: Map[DateTime, Int]
+  )
 
-  var currentState: DeviceState.Value = DeviceState.OFF
-  var powerConsumptionMap: mutable.Map[DateTime, Int] = mutable.Map.empty
+  var state: WashingMachineState = WashingMachineState(currentState = DeviceState.OFF, powerConsumptionMap = Map.empty)
+
   val r = new scala.util.Random
 
-  override def receive: Receive = {
-    case cmd: WashingMachinePersistentActor.StartMachine => startMachine(cmd)
-    case cmd: WashingMachinePersistentActor.StopMachine  => stopMachine(cmd)
-    case cmd: WashingMachinePersistentActor.CapturePowerConsumption  => capturePowerConsumption(cmd)
-    case _: WashingMachinePersistentActor.GetCurrentState.type  => returnCurrentState()
-    case _: WashingMachinePersistentActor.GetTotalPowerConsumption.type  => returnTotalPowerConsumption()
-  }
-
-  def startMachine(cmd: WashingMachinePersistentActor.StartMachine): Unit = {
-    if(currentState == DeviceState.ON)
-      throw new IllegalArgumentException(s"Cannot reissue start. Washing machine: ${name} already in ON state")
-
-
-    if(cmd.level == PowerLevel.FLUCTUATING)
-      context.stop(self)
-
+  def startMachine(evt: StartMachineEvt): Unit = {
     log.info(s"Started washing machine ${name}")
-
-    currentState = DeviceState.ON
+    state = state.copy(currentState = DeviceState.ON)
 
     Future {
-      while (currentState == DeviceState.ON) {
+      while (state.currentState == DeviceState.ON) {
         Thread.sleep(5000)
         val powerConsumption = r.nextInt(50)
         val timeNow = DateTime.now()
         log.info(s"recording power consumption of ${powerConsumption} at ${timeNow}")
-        powerConsumptionMap += (timeNow -> powerConsumption)
+        state = state.copy(powerConsumptionMap = state.powerConsumptionMap + (timeNow -> powerConsumption))
       }
     }
 
   }
 
-  def stopMachine(cmd: WashingMachinePersistentActor.StopMachine): Unit = {
-    currentState = DeviceState.OFF
+  def stopMachine(cmd: StopMachineEvt): Unit = {
+    state = state.copy(currentState = DeviceState.OFF)
   }
 
-  def capturePowerConsumption(cmd: WashingMachinePersistentActor.CapturePowerConsumption): Unit = {
-    if(cmd.consumption > 50)
-      throw new IllegalArgumentException(s"${cmd.consumption} exceeds the maximum allowed consumption of 50")
-
-    powerConsumptionMap += (cmd.time -> cmd.consumption)
+  def capturePowerConsumption(evt: CapturePowerConsumptionEvt): Unit = {
+    state = state.copy(powerConsumptionMap = state.powerConsumptionMap + (evt.time -> evt.consumption))
   }
 
   def returnCurrentState(): Unit = {
-    sender ! currentState
+    sender ! state.currentState
   }
 
   def returnTotalPowerConsumption(): Unit = {
-   sender !  (0 /: powerConsumptionMap.values)(_ + _)
+    sender ! (0 /: state.powerConsumptionMap.values)(_ + _)
   }
 
+  def updateState: Receive = {
+    case evt: StartMachineEvt => startMachine(evt)
+    case evt: StopMachineEvt => stopMachine(evt)
+    case evt: CapturePowerConsumptionEvt => capturePowerConsumption(evt)
+    case msg => log.error("Unknown message received {}", msg)
+  }
 
+  def persistAndUpdateState(evt: Event) = persist(evt)(persistedEvt => updateState(persistedEvt))
 
-  override def receiveRecover: Receive = ???
+  override def receiveRecover: Receive = updateState
 
-  override def receiveCommand: Receive = ???
+  override def receiveCommand: Receive = {
+    case cmd: StartMachineCmd =>
+      if (state.currentState == DeviceState.ON)
+        throw new IllegalArgumentException(s"Cannot reissue start. Washing machine: ${name} already in ON state")
 
-  override def persistenceId: String = ???
+      if (cmd.level == PowerLevel.FLUCTUATING)
+        context.stop(self)
+
+      persistAndUpdateState(StartMachineEvt(level = cmd.level, time = cmd.time))
+
+    case cmd: StopMachineCmd => persistAndUpdateState(StopMachineEvt(time = cmd.time))
+
+    case cmd: CapturePowerConsumptionCmd =>
+      if (cmd.consumption > 50) {
+        throw new IllegalArgumentException(s"${cmd.consumption} exceeds the maximum allowed consumption of 50")
+      } else {
+        persistAndUpdateState(CapturePowerConsumptionEvt(consumption = cmd.consumption, time = cmd.time))
+      }
+
+    case _: GetCurrentStateCmd.type => returnCurrentState()
+
+    case _: GetTotalPowerConsumptionCmd.type => returnTotalPowerConsumption()
+  }
+
+  override def persistenceId: String = s"washing-machine-${name}"
 }
 
 object WashingMachinePersistentActor {
 
   def props(name: String): Props = Props(new WashingMachinePersistentActor(name = name))
 
-  case class StartMachine(
+  /******************************** Commands ******************************************************/
+
+  trait Command
+
+  case class StartMachineCmd(
       level: PowerLevel.Value,
       time: DateTime = DateTime.now()
-  )
+  ) extends Command
 
-  case class StopMachine(
+  case class StopMachineCmd(
       time: DateTime = DateTime.now()
-  )
+  ) extends Command
 
-  case class CapturePowerConsumption(
+  case class CapturePowerConsumptionCmd(
       consumption: Int,
       time: DateTime = DateTime.now()
-  )
+  ) extends Command
 
-  case object GetCurrentState
+  case object GetCurrentStateCmd extends Command
 
-  case object GetTotalPowerConsumption
+  case object GetTotalPowerConsumptionCmd extends Command
 
-  case class GetConsumptionSince(time: DateTime)
+  case class GetConsumptionSinceCmd(time: DateTime) extends Command
 
+ /******************************** Events ******************************************************/
+  trait Event
+
+  case class StartMachineEvt(
+      level: PowerLevel.Value,
+      time: DateTime = DateTime.now()
+  ) extends Event
+
+  case class StopMachineEvt(
+      time: DateTime = DateTime.now()
+  ) extends Event
+
+  case class CapturePowerConsumptionEvt(
+      consumption: Int,
+      time: DateTime = DateTime.now()
+  ) extends Event
 }

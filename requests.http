@@ -1,0 +1,10 @@
+###  Get washing machines
+GET http://localhost:9000/washing-machines
+Content-type: application/json
+
+
+### - Start washing machine
+POST http://localhost:9000/washing-machines/Samsung/start
+Content-type: application/json
+
+
