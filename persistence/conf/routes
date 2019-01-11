@@ -4,5 +4,6 @@
 # ~~~~
 
 # An example controller showing a sample home page
-GET           /washing-machines                     com.akka.home.api.WashingMachineController.getWashingMachines
-POST          /washing-machines/:id/start           com.akka.home.api.WashingMachineController.startWashingMachine(id: String)
+GET             /washing-machines                     com.akka.home.api.WashingMachineController.getWashingMachines
+GET             /washing-machines/:id/state           com.akka.home.api.WashingMachineController.getWashingMachineState(id: String)
+POST            /washing-machines/:id/start           com.akka.home.api.WashingMachineController.startWashingMachine(id: String)

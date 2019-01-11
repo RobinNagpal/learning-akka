@@ -7,4 +7,10 @@ Content-type: application/json
 POST http://localhost:9000/washing-machines/Samsung/start
 Content-type: application/json
 
+###
+GET http://localhost:9000/washing-machines/Samsung/state
+Content-type: application/json
+
+###
+
 

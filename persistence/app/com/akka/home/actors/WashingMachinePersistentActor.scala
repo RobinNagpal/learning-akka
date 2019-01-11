@@ -28,7 +28,7 @@ class WashingMachinePersistentActor(name: String) extends PersistentActor with A
         Thread.sleep(5000)
         val powerConsumption = r.nextInt(50)
         val timeNow = DateTime.now()
-        log.info(s"recording power consumption of ${powerConsumption} at ${timeNow}")
+        log.info(s"startMachine - recording power consumption of ${powerConsumption} at ${timeNow}")
         state = state.copy(powerConsumptionMap = state.powerConsumptionMap + (timeNow -> powerConsumption))
       }
     }
@@ -40,6 +40,7 @@ class WashingMachinePersistentActor(name: String) extends PersistentActor with A
   }
 
   def capturePowerConsumption(evt: CapturePowerConsumptionEvt): Unit = {
+    log.info(s"capturePowerConsumption - recording power consumption of ${evt.consumption} at ${evt.time}")
     state = state.copy(powerConsumptionMap = state.powerConsumptionMap + (evt.time -> evt.consumption))
   }
 
