@@ -1,26 +1,24 @@
 package com.akka.home.api
 
 import akka.actor.{ActorRef, ActorSystem}
-import com.akka.home.PowerLevel
-import com.akka.home.actors.WashingMachinePersistentActor
+import akka.pattern.ask
+import akka.util.Timeout
+import com.akka.home.actors.{WashingMachineStreamsActor, DeviceState, PowerLevel}
 import javax.inject.{Inject, Singleton}
 import org.joda.time.DateTime
 import play.api.libs.json.{JsError, Json, Reads}
 import play.api.mvc.{AbstractController, ControllerComponents, Result, Results}
-import akka.pattern.ask
-import akka.util.Timeout
-import com.akka.home._
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
-import scala.concurrent.ExecutionContext.Implicits.global
 
 @Singleton
 class WashingMachineController @Inject()(system: ActorSystem, cc: ControllerComponents) extends AbstractController(cc) with Serializers {
 
-  val samsung = system.actorOf(WashingMachinePersistentActor.props("Samsung"))
-  val lg = system.actorOf(WashingMachinePersistentActor.props("LG"))
-  val bosh = system.actorOf(WashingMachinePersistentActor.props("Bosh"))
+  val samsung = system.actorOf(WashingMachineStreamsActor.props("Samsung"))
+  val lg = system.actorOf(WashingMachineStreamsActor.props("LG"))
+  val bosh = system.actorOf(WashingMachineStreamsActor.props("Bosh"))
 
   implicit val timeout = Timeout(5 seconds)
 
@@ -31,7 +29,7 @@ class WashingMachineController @Inject()(system: ActorSystem, cc: ControllerComp
   def getWashingMachineState(id: String) = Action.async {
     findMachineAndDoAsync(id) {
       machine => {
-        val stateFuture: Future[DeviceState.Value] = (machine ? WashingMachinePersistentActor.GetCurrentStateCmd).mapTo[DeviceState.Value]
+        val stateFuture: Future[DeviceState.Value] = (machine ? WashingMachineStreamsActor.GetCurrentState).mapTo[DeviceState.Value]
         stateFuture.map( state => Results.Ok(Json.toJson(Map("state" -> state.toString))))
       }
     }
@@ -40,7 +38,7 @@ class WashingMachineController @Inject()(system: ActorSystem, cc: ControllerComp
   def getWashingMachineConsumption(id: String) = Action.async {
     findMachineAndDoAsync(id) {
       machine => {
-        val powerFuture: Future[Int] = (machine ? WashingMachinePersistentActor.GetTotalPowerConsumptionCmd).mapTo[Int]
+        val powerFuture: Future[Int] = (machine ? WashingMachineStreamsActor.GetTotalPowerConsumption).mapTo[Int]
         powerFuture.map( power => Results.Ok(Json.toJson(Map("power" -> power))))
       }
     }
@@ -49,7 +47,7 @@ class WashingMachineController @Inject()(system: ActorSystem, cc: ControllerComp
   def startWashingMachine(id: String) = Action {
     findMachineAndDo(id) {
       machine => {
-        machine ! WashingMachinePersistentActor.StartMachineCmd(level = PowerLevel.HIGH, time = DateTime.now())
+        machine ! WashingMachineStreamsActor.StartMachine(level = PowerLevel.HIGH, time = DateTime.now())
         Results.Ok
       }
     }
@@ -58,20 +56,12 @@ class WashingMachineController @Inject()(system: ActorSystem, cc: ControllerComp
   def capturePowerConsumption(id: String) = Action(validateJson[CapturePowerConsumptionCmd]) { cmd =>
     findMachineAndDo(id) {
       machine => {
-        machine ! WashingMachinePersistentActor.CapturePowerConsumptionCmd(consumption = cmd.body.consumption, time = DateTime.now())
+        machine ! WashingMachineStreamsActor.CapturePowerConsumption(consumption = cmd.body.consumption, time = DateTime.now())
         Results.Ok
       }
     }
   }
 
-  def saveSnapshot(id: String) = Action {
-    findMachineAndDo(id) {
-      machine => {
-        machine ! WashingMachinePersistentActor.SaveSnapshotCmd
-        Results.Ok
-      }
-    }
-  }
 
   private def getWashingMachineActor(id: String): Option[ActorRef] = {
     if ("Samsung".equalsIgnoreCase(id)) {

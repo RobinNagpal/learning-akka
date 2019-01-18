@@ -1,0 +1,16 @@
+<configuration>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>[%highlight(%-5level)] %cyan(%logger{5}): %msg %n</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="application" level="DEBUG" />
+    <logger name="akka" level="DEBUG" />
+    <logger name="mypackage" level="DEBUG" />
+
+    <root level="DEBUG">
+        <appender-ref ref="STDOUT" />
+    </root>
+
+</configuration>

@@ -56,3 +56,17 @@ lazy val persistence = (project in file("persistence"))
     javaOptions in Test += "-Dconfig.file=conf/application.test.conf"
   )
 
+lazy val streams = (project in file("streams"))
+  .enablePlugins(PlayScala)
+  .settings(common)
+  .settings(
+    name := "streams",
+    libraryDependencies ++= Seq(
+      guice,
+      "com.typesafe.akka" %% "akka-stream" % "2.5.19",
+      "org.scalatestplus.play" %% "scalatestplus-play" % "3.1.2" % Test
+    )
+  ).settings(
+    javaOptions in Test += "-Dconfig.file=conf/application.test.conf"
+  )
+

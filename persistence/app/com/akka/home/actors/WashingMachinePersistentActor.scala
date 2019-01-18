@@ -2,8 +2,10 @@ package com.akka.home.actors
 
 import com.akka.home.{DeviceState, PowerLevel}
 import akka.actor.{ActorLogging, Props}
-import akka.persistence.PersistentActor
+import akka.event.{Logging, LoggingReceive}
+import akka.persistence.{PersistentActor, RecoveryCompleted, SnapshotOffer}
 import org.joda.time.DateTime
+
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -12,10 +14,10 @@ class WashingMachinePersistentActor(name: String) extends PersistentActor with A
 
   case class WashingMachineState(
       currentState: DeviceState.Value,
-      powerConsumptionMap: Map[DateTime, Int]
+      powerConsumptionList: List[Int]
   )
 
-  var state: WashingMachineState = WashingMachineState(currentState = DeviceState.OFF, powerConsumptionMap = Map.empty)
+  var state: WashingMachineState = WashingMachineState(currentState = DeviceState.OFF, powerConsumptionList = List.empty)
 
   val r = new scala.util.Random
 
@@ -25,11 +27,11 @@ class WashingMachinePersistentActor(name: String) extends PersistentActor with A
 
     Future {
       while (state.currentState == DeviceState.ON) {
-        Thread.sleep(5000)
+        Thread.sleep(50000)
         val powerConsumption = r.nextInt(50)
         val timeNow = DateTime.now()
         log.info(s"startMachine - recording power consumption of ${powerConsumption} at ${timeNow}")
-        state = state.copy(powerConsumptionMap = state.powerConsumptionMap + (timeNow -> powerConsumption))
+        self ! CapturePowerConsumptionCmd(consumption = powerConsumption, time = timeNow)
       }
     }
 
@@ -40,8 +42,7 @@ class WashingMachinePersistentActor(name: String) extends PersistentActor with A
   }
 
   def capturePowerConsumption(evt: CapturePowerConsumptionEvt): Unit = {
-    log.info(s"capturePowerConsumption - recording power consumption of ${evt.consumption} at ${evt.time}")
-    state = state.copy(powerConsumptionMap = state.powerConsumptionMap + (evt.time -> evt.consumption))
+    state = state.copy(powerConsumptionList = evt.consumption :: state.powerConsumptionList)
   }
 
   def returnCurrentState(): Unit = {
@@ -49,21 +50,31 @@ class WashingMachinePersistentActor(name: String) extends PersistentActor with A
   }
 
   def returnTotalPowerConsumption(): Unit = {
-    sender ! (0 /: state.powerConsumptionMap.values)(_ + _)
+    sender ! (0 /: state.powerConsumptionList)(_ + _)
   }
 
-  def updateState: Receive = {
+  def updateState: Receive = LoggingReceive.withLabel("WashingMachinePersistentActor", Logging.InfoLevel) {
+
     case evt: StartMachineEvt => startMachine(evt)
     case evt: StopMachineEvt => stopMachine(evt)
     case evt: CapturePowerConsumptionEvt => capturePowerConsumption(evt)
+    case RecoveryCompleted => log.info("Done with replay of the all the events")
     case msg => log.error("Unknown message received {}", msg)
   }
 
   def persistAndUpdateState(evt: Event) = persist(evt)(persistedEvt => updateState(persistedEvt))
 
-  override def receiveRecover: Receive = updateState
+  override def receiveRecover: Receive = {
+    case SnapshotOffer(_, snapshot: WashingMachineState) ⇒
+      log.info(s"- ${name} - Restoring from snapshot")
+      state = snapshot
+    case evt @ _ =>
+      log.info(s"- ${name} - Receive recover event received {}", evt)
+      updateState(evt)
+  }
 
   override def receiveCommand: Receive = {
+
     case cmd: StartMachineCmd =>
       if (state.currentState == DeviceState.ON)
         throw new IllegalArgumentException(s"Cannot reissue start. Washing machine: ${name} already in ON state")
@@ -82,9 +93,13 @@ class WashingMachinePersistentActor(name: String) extends PersistentActor with A
         persistAndUpdateState(CapturePowerConsumptionEvt(consumption = cmd.consumption, time = cmd.time))
       }
 
-    case _: GetCurrentStateCmd.type => returnCurrentState()
+    case GetCurrentStateCmd => returnCurrentState()
 
-    case _: GetTotalPowerConsumptionCmd.type => returnTotalPowerConsumption()
+    case GetTotalPowerConsumptionCmd => returnTotalPowerConsumption()
+
+    case SaveSnapshotCmd =>
+      log.info(s"- ${name} - Saving snapshot with state ${state}")
+      saveSnapshot(state)
   }
 
   override def persistenceId: String = s"washing-machine-${name}"
@@ -95,7 +110,6 @@ object WashingMachinePersistentActor {
   def props(name: String): Props = Props(new WashingMachinePersistentActor(name = name))
 
   /******************************** Commands ******************************************************/
-
   trait Command
 
   case class StartMachineCmd(
@@ -116,9 +130,11 @@ object WashingMachinePersistentActor {
 
   case object GetTotalPowerConsumptionCmd extends Command
 
+  case object SaveSnapshotCmd extends Command
+
   case class GetConsumptionSinceCmd(time: DateTime) extends Command
 
- /******************************** Events ******************************************************/
+  /******************************** Events ******************************************************/
   trait Event
 
   case class StartMachineEvt(

@@ -12,5 +12,22 @@ GET http://localhost:9000/washing-machines/Samsung/state
 Content-type: application/json
 
 ###
+GET http://localhost:9000/washing-machines/Samsung/power
+Content-type: application/json
+
+### - Capture power consumption
+POST http://localhost:9000/washing-machines/Samsung/power
+Content-type: application/json
+
+{
+  "consumption" :  30
+}
+
+###
+### - Start washing machine
+POST http://localhost:9000/washing-machines/Samsung/snapshot
+Content-type: application/json
+
+###
 
 
