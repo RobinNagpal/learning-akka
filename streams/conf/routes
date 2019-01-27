@@ -4,8 +4,9 @@
 # ~~~~
 
 # An example controller showing a sample home page
-GET             /washing-machines                     com.akka.home.api.WashingMachineController.getWashingMachines
-GET             /washing-machines/:id/state           com.akka.home.api.WashingMachineController.getWashingMachineState(id: String)
-GET             /washing-machines/:id/power           com.akka.home.api.WashingMachineController.getWashingMachineConsumption(id: String)
-POST            /washing-machines/:id/start           com.akka.home.api.WashingMachineController.startWashingMachine(id: String)
-POST            /washing-machines/:id/power           com.akka.home.api.WashingMachineController.capturePowerConsumption(id: String)
+GET             /washing-machines                     com.akka.home.api.WashingMachineStreamController.getWashingMachines
+GET             /washing-machines/:id/state           com.akka.home.api.WashingMachineStreamController.getWashingMachineState(id: String)
+GET             /washing-machines/:id/power           com.akka.home.api.WashingMachineStreamController.getWashingMachineConsumption(id: String)
+POST            /washing-machines/:id/start           com.akka.home.api.WashingMachineStreamController.startWashingMachine(id: String)
+POST            /washing-machines/:id/power           com.akka.home.api.WashingMachineStreamController.capturePowerConsumption(id: String)
+POST            /washing-machines/:id/batch-power     com.akka.home.api.WashingMachineStreamController.capturePowerConsumptionInBatches(id: String)

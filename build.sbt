@@ -64,6 +64,7 @@ lazy val streams = (project in file("streams"))
     libraryDependencies ++= Seq(
       guice,
       "com.typesafe.akka" %% "akka-stream" % "2.5.19",
+      "com.typesafe.play" %% "play-json-joda" % "2.7.0",
       "org.scalatestplus.play" %% "scalatestplus-play" % "3.1.2" % Test
     )
   ).settings(

@@ -23,11 +23,17 @@ Content-type: application/json
   "consumption" :  30
 }
 
-###
-### - Start washing machine
-POST http://localhost:9000/washing-machines/Samsung/snapshot
+### - Capture in batch mode
+POST http://localhost:9000/washing-machines/Samsung/batch-power
 Content-type: application/json
 
+{
+  "batchSize" :  5,
+  "singleReadingAmount": 2,
+  "totalNumberOfReadings": 30,
+  "startDate" : "2017-10-01T09:45:00",
+  "endDate": "2018-10-01T09:45:00"
+}
 ###
 
 

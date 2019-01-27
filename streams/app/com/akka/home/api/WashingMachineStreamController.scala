@@ -3,7 +3,7 @@ package com.akka.home.api
 import akka.actor.{ActorRef, ActorSystem}
 import akka.pattern.ask
 import akka.util.Timeout
-import com.akka.home.actors.{WashingMachineStreamsActor, DeviceState, PowerLevel}
+import com.akka.home.actors.{DeviceState, PowerLevel, WashingMachineStreamsActor}
 import javax.inject.{Inject, Singleton}
 import org.joda.time.DateTime
 import play.api.libs.json.{JsError, Json, Reads}
@@ -14,7 +14,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
 
 @Singleton
-class WashingMachineController @Inject()(system: ActorSystem, cc: ControllerComponents) extends AbstractController(cc) with Serializers {
+class WashingMachineStreamController @Inject()(system: ActorSystem, cc: ControllerComponents) extends AbstractController(cc) with Serializers {
 
   val samsung = system.actorOf(WashingMachineStreamsActor.props("Samsung"))
   val lg = system.actorOf(WashingMachineStreamsActor.props("LG"))
@@ -57,6 +57,21 @@ class WashingMachineController @Inject()(system: ActorSystem, cc: ControllerComp
     findMachineAndDo(id) {
       machine => {
         machine ! WashingMachineStreamsActor.CapturePowerConsumption(consumption = cmd.body.consumption, time = DateTime.now())
+        Results.Ok
+      }
+    }
+  }
+
+  def capturePowerConsumptionInBatches(id: String) = Action(validateJson[CapturePowerConsumptionInBatches]) { cmd =>
+    findMachineAndDo(id) {
+      machine => {
+        machine ! WashingMachineStreamsActor.CapturePowerConsumptionInBatches(
+          batchSize = cmd.body.batchSize,
+          singleReadingAmount = cmd.body.singleReadingAmount,
+          totalNumberOfReadings = cmd.body.totalNumberOfReadings,
+          startDate = cmd.body.startDate,
+          endDate = cmd.body.endDate
+        )
         Results.Ok
       }
     }

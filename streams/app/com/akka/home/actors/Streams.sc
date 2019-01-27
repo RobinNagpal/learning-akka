@@ -11,6 +11,18 @@ import akka.stream.scaladsl._
 implicit val system = ActorSystem("QuickStart")
 implicit val materializer = ActorMaterializer()
 
+val done = Source(1 to 10)
+  .flatMapConcat(i => Source(1 to 5).map(j => (i, j)))
+  .throttle(3, 1 second)
+  .runForeach(element => println(s"${element._1} => ${element._2} \n"))(materializer)
+
+implicit val ec = system.dispatcher
+done.onComplete(_ ⇒ println("Done printing"))
+
+
+
+
+/*
 val source: Source[Int, NotUsed] = Source(1 to 100)
 source.runForeach(i ⇒ println(i))(materializer)
 
@@ -57,6 +69,7 @@ tweets
   .map(_.name.toUpperCase) // Convert all hashtags to upper case
   .runWith(Sink.foreach(println)) // Attach the Flow to a Sink that will finally print the hashtags
 
+*/
 
 
 Thread.sleep(10000)
