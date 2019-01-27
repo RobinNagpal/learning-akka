@@ -1,11 +1,11 @@
 package com.akka.home.actors
 
-import akka.NotUsed
+import akka.{Done, NotUsed}
 import akka.actor.{Actor, ActorLogging, Props}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Source
 import com.akka.home.actors.WashingMachineStreamsActor.CapturePowerConsumption
-import org.joda.time.DateTime
+import org.joda.time.{DateTime, DateTimeZone}
 
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -24,8 +24,6 @@ class WashingMachineStreamsActor(name: String) extends Actor with ActorLogging {
   var currentState: DeviceState.Value = DeviceState.OFF
   var powerConsumptionMap: mutable.Map[DateTime, Int] = mutable.Map.empty
   val r = new scala.util.Random
-
-  implicit val materializer = ActorMaterializer()
 
   override def receive: Receive = {
     case cmd: WashingMachineStreamsActor.StartMachine => startMachine(cmd)
@@ -78,8 +76,9 @@ class WashingMachineStreamsActor(name: String) extends Actor with ActorLogging {
 
     val numberOfBatchedReadings = Math.ceil(cmd.totalNumberOfReadings.toDouble / cmd.batchSize.toDouble).toInt
 
+    implicit val materializer = ActorMaterializer()
 
-
+    log.info(s"Will run ${numberOfBatchedReadings}, each of ${cmd.batchSize}")
 
     // The Source type is parameterized with two types:
     // - first one is the type of element that this source emits
@@ -87,15 +86,26 @@ class WashingMachineStreamsActor(name: String) extends Actor with ActorLogging {
     // Where no auxiliary information is produced, the type akka.NotUsed is used—and a simple range of integers surely falls into this category
     val source: Source[Int, NotUsed] = Source(1 to numberOfBatchedReadings)
     //
-    val done = source
+    val done: Future[Done] = source
       .flatMapConcat(batchNumber => toReadingsInBatchFn(batchNumber))
-      .throttle(5, 5 seconds)
+      .throttle(2, 5 seconds)
+      .recover {
+        case e =>
+        log.error(e, e.getMessage)
+        throw e
+      }
       .runForeach(reading => {
         log.info(s"Recording reading of batch ${reading._1} @ ${reading._2} -> ${reading._3}")
         self ! CapturePowerConsumption(consumption = reading._3, time = reading._2)
       })(materializer)
+      .recover {
+        case e =>
+          log.error(e, e.getMessage)
+          throw e
+      }
 
-    done.onComplete(_ ⇒ log.info("Done capturing the power of batch"))
+    implicit val ec = context.system.dispatcher
+    done.onComplete(_ ⇒ log.info("Done capturing the power of batch"))(ec)
   }
 
 
@@ -112,7 +122,7 @@ class WashingMachineStreamsActor(name: String) extends Actor with ActorLogging {
     sender ! powerConsumptionMap
   }
 
-  def randomDateTime(start: DateTime, end: DateTime)(): DateTime = new DateTime(Math.random * (end.getMillis - start.getMillis))
+  def randomDateTime(start: DateTime, end: DateTime)(): DateTime = new DateTime((Math.random * (end.getMillis - start.getMillis)).toLong, DateTimeZone.UTC)
 }
 
 object WashingMachineStreamsActor {
