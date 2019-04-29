@@ -1,15 +1,6 @@
 package com.akka.streamsAndPersistence.api
 
-import org.joda.time.DateTime
-
-case class CapturePowerConsumptionCmd(
-    consumption: Int
-)
-
-case class CapturePowerConsumptionInBatches(
-    batchSize: Int,
-    singleReadingAmount: Int,
-    totalNumberOfReadings: Int,
-    startDate: DateTime,
-    endDate: DateTime
+case class TriggerNewMigration(
+    numberOfChecklists: Int,
+    newRevision: Int
 )

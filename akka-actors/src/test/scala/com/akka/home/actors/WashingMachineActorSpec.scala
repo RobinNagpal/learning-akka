@@ -8,8 +8,7 @@ import com.akka.home.{DeviceState, PowerLevel}
 
 import scala.concurrent.duration.DurationLong
 
-class WashingMachineActorSpec extends TestKit(ActorSystem("MySpec")) with ImplicitSender
-  with WordSpecLike with Matchers with BeforeAndAfterAll{
+class WashingMachineActorSpec extends TestKit(ActorSystem("MySpec")) with ImplicitSender with WordSpecLike with Matchers with BeforeAndAfterAll {
 
   override def afterAll: Unit = {
     TestKit.shutdownActorSystem(system)
@@ -17,7 +16,7 @@ class WashingMachineActorSpec extends TestKit(ActorSystem("MySpec")) with Implic
 
   implicit val timeout: Timeout = Timeout(5 seconds)
 
-  private case class StartedMachineSUT(){
+  private case class StartedMachineSUT() {
     val washingMachine = system.actorOf(WashingMachineActor.props("Samsung"))
 
     washingMachine ! WashingMachineActor.StartMachine(
@@ -38,7 +37,6 @@ class WashingMachineActorSpec extends TestKit(ActorSystem("MySpec")) with Implic
       washingMachine ! WashingMachineActor.GetTotalPowerConsumption
       expectMsg(0)
 
-
       washingMachine ! WashingMachineActor.CapturePowerConsumption(consumption = 25)
       washingMachine ! WashingMachineActor.GetTotalPowerConsumption
       expectMsg(25)
@@ -50,7 +48,6 @@ class WashingMachineActorSpec extends TestKit(ActorSystem("MySpec")) with Implic
       washingMachine ! WashingMachineActor.GetTotalPowerConsumption
       expectMsg(0)
 
-
       washingMachine ! WashingMachineActor.CapturePowerConsumption(consumption = 25)
       washingMachine ! WashingMachineActor.GetTotalPowerConsumption
       expectMsg(25)
@@ -58,7 +55,7 @@ class WashingMachineActorSpec extends TestKit(ActorSystem("MySpec")) with Implic
       washingMachine ! WashingMachineActor.CapturePowerConsumption(consumption = 500)
 
       washingMachine ! WashingMachineActor.GetCurrentState
-      expectMsgPF(){
+      expectMsgPF() {
         case DeviceState.OFF => ()
         case _ => fail
       }
@@ -71,7 +68,6 @@ class WashingMachineActorSpec extends TestKit(ActorSystem("MySpec")) with Implic
       val probe = TestProbe()
 
       val washingMachine = system.actorOf(WashingMachineActor.props("Samsung"))
-
 
       probe watch washingMachine
       washingMachine ! WashingMachineActor.StartMachine(

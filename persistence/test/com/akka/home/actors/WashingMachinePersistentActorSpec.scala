@@ -9,7 +9,13 @@ import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 
 import scala.concurrent.duration.DurationLong
 
-class WashingMachinePersistentActorSpec extends  TestKit(ActorSystem("MySpec")) with ImplicitSender with WordSpecLike with Matchers with GuiceOneAppPerSuite with BeforeAndAfterAll{
+class WashingMachinePersistentActorSpec
+    extends TestKit(ActorSystem("MySpec"))
+    with ImplicitSender
+    with WordSpecLike
+    with Matchers
+    with GuiceOneAppPerSuite
+    with BeforeAndAfterAll {
   import WashingMachinePersistentActor._
 
   override def afterAll: Unit = {
@@ -18,7 +24,7 @@ class WashingMachinePersistentActorSpec extends  TestKit(ActorSystem("MySpec")) 
 
   implicit val timeout: Timeout = Timeout(5 seconds)
 
-  private case class StartedMachineSUT(sutName: String){
+  private case class StartedMachineSUT(sutName: String) {
     val washingMachine = system.actorOf(WashingMachinePersistentActor.props("Samsung-" + sutName))
 
     washingMachine ! StartMachineCmd(
@@ -39,7 +45,6 @@ class WashingMachinePersistentActorSpec extends  TestKit(ActorSystem("MySpec")) 
       washingMachine ! GetTotalPowerConsumptionCmd
       expectMsg(0)
 
-
       washingMachine ! CapturePowerConsumptionCmd(consumption = 25)
       washingMachine ! GetTotalPowerConsumptionCmd
       expectMsg(25)
@@ -51,7 +56,6 @@ class WashingMachinePersistentActorSpec extends  TestKit(ActorSystem("MySpec")) 
       washingMachine ! GetTotalPowerConsumptionCmd
       expectMsg(0)
 
-
       washingMachine ! CapturePowerConsumptionCmd(consumption = 25)
       washingMachine ! GetTotalPowerConsumptionCmd
       expectMsg(25)
@@ -59,7 +63,7 @@ class WashingMachinePersistentActorSpec extends  TestKit(ActorSystem("MySpec")) 
       washingMachine ! CapturePowerConsumptionCmd(consumption = 500)
 
       washingMachine ! GetCurrentStateCmd
-      expectMsgPF(){
+      expectMsgPF() {
         case DeviceState.ON => ()
         case _ => fail
       }
@@ -71,8 +75,7 @@ class WashingMachinePersistentActorSpec extends  TestKit(ActorSystem("MySpec")) 
     "actor should stop id the power is fluctuating" in {
       val probe = TestProbe()
 
-      val washingMachine = system.actorOf(WashingMachinePersistentActor.props("Samsung-stop-if-power-is-fluctuating" ))
-
+      val washingMachine = system.actorOf(WashingMachinePersistentActor.props("Samsung-stop-if-power-is-fluctuating"))
 
       probe watch washingMachine
       washingMachine ! StartMachineCmd(

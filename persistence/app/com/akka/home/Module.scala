@@ -9,7 +9,5 @@ import play.api.{Configuration, Environment}
   * https://www.playframework.com/documentation/latest/ScalaDependencyInjection
   */
 class Module(environment: Environment, configuration: Configuration) extends AbstractModule {
-  override def configure(): Unit = {
-
-  }
+  override def configure(): Unit = {}
 }

@@ -4,9 +4,5 @@
 # ~~~~
 
 # An example controller showing a sample home page
-GET             /washing-machines                     com.akka.streamsAndPersistence.api.WashingMachineStreamController.getWashingMachines
-GET             /washing-machines/:id/state           com.akka.streamsAndPersistence.api.WashingMachineStreamController.getWashingMachineState(id: String)
-GET             /washing-machines/:id/power           com.akka.streamsAndPersistence.api.WashingMachineStreamController.getWashingMachineConsumption(id: String)
-POST            /washing-machines/:id/start           com.akka.streamsAndPersistence.api.WashingMachineStreamController.startWashingMachine(id: String)
-POST            /washing-machines/:id/power           com.akka.streamsAndPersistence.api.WashingMachineStreamController.capturePowerConsumption(id: String)
-POST            /washing-machines/:id/batch-power     com.akka.streamsAndPersistence.api.WashingMachineStreamController.capturePowerConsumptionInBatches(id: String)
+GET         /migrations/running             com.akka.streamsAndPersistence.api.MigrationController.getTemplateMigrationActors()
+POST        /migrations/start-new/:id        com.akka.streamsAndPersistence.api.MigrationController.triggerMigration(id: String)

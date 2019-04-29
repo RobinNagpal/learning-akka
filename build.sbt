@@ -75,7 +75,7 @@ lazy val streamsAndPersistence = (project in file("streams-and-persistence"))
   .enablePlugins(PlayScala)
   .settings(common)
   .settings(
-    name := "streams-and-persistence",
+    name := "streamsAndPersistence",
     libraryDependencies ++= Seq(
       guice,
       "com.typesafe.akka" %% "akka-persistence" % AKKA_VERSION,
@@ -103,3 +103,9 @@ lazy val clustering = (project in file("clustering"))
     javaOptions in Test += "-Dconfig.file=conf/application.test.conf"
   )
 
+
+// For Scalafmt
+addCommandAlias("fmt", "; scalafmt; test:scalafmt")
+
+// For Scalastyle
+addCommandAlias("style", "; scalastyle; test:scalastyle")

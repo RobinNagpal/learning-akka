@@ -8,8 +8,7 @@ import scala.collection.mutable
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 
-
-class WashingMachineActor(name: String) extends Actor with ActorLogging{
+class WashingMachineActor(name: String) extends Actor with ActorLogging {
 
   var currentState: DeviceState.Value = DeviceState.OFF
   var powerConsumptionMap: mutable.Map[DateTime, Int] = mutable.Map.empty
@@ -17,18 +16,17 @@ class WashingMachineActor(name: String) extends Actor with ActorLogging{
 
   override def receive: Receive = {
     case cmd: WashingMachineActor.StartMachine => startMachine(cmd)
-    case cmd: WashingMachineActor.StopMachine  => stopMachine(cmd)
-    case cmd: WashingMachineActor.CapturePowerConsumption  => capturePowerConsumption(cmd)
-    case _: WashingMachineActor.GetCurrentState.type  => returnCurrentState()
-    case _: WashingMachineActor.GetTotalPowerConsumption.type  => returnTotalPowerConsumption()
+    case cmd: WashingMachineActor.StopMachine => stopMachine(cmd)
+    case cmd: WashingMachineActor.CapturePowerConsumption => capturePowerConsumption(cmd)
+    case _: WashingMachineActor.GetCurrentState.type => returnCurrentState()
+    case _: WashingMachineActor.GetTotalPowerConsumption.type => returnTotalPowerConsumption()
   }
 
   def startMachine(cmd: WashingMachineActor.StartMachine): Unit = {
-    if(currentState == DeviceState.ON)
+    if (currentState == DeviceState.ON)
       throw new IllegalArgumentException(s"Cannot reissue start. Washing machine: ${name} already in ON state")
 
-
-    if(cmd.level == PowerLevel.FLUCTUATING)
+    if (cmd.level == PowerLevel.FLUCTUATING)
       context.stop(self)
 
     log.info(s"Started washing machine ${name}")
@@ -52,7 +50,7 @@ class WashingMachineActor(name: String) extends Actor with ActorLogging{
   }
 
   def capturePowerConsumption(cmd: WashingMachineActor.CapturePowerConsumption): Unit = {
-    if(cmd.consumption > 50)
+    if (cmd.consumption > 50)
       throw new IllegalArgumentException(s"${cmd.consumption} exceeds the maximum allowed consumption of 50")
 
     powerConsumptionMap += (cmd.time -> cmd.consumption)
@@ -63,7 +61,7 @@ class WashingMachineActor(name: String) extends Actor with ActorLogging{
   }
 
   def returnTotalPowerConsumption(): Unit = {
-   sender !  (0 /: powerConsumptionMap.values)(_ + _)
+    sender ! (0 /: powerConsumptionMap.values)(_ + _)
   }
 
 }

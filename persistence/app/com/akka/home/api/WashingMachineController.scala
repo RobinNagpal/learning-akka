@@ -29,26 +29,26 @@ class WashingMachineController @Inject()(system: ActorSystem, cc: ControllerComp
   }
 
   def getWashingMachineState(id: String) = Action.async {
-    findMachineAndDoAsync(id) {
-      machine => {
+    findMachineAndDoAsync(id) { machine =>
+      {
         val stateFuture: Future[DeviceState.Value] = (machine ? WashingMachinePersistentActor.GetCurrentStateCmd).mapTo[DeviceState.Value]
-        stateFuture.map( state => Results.Ok(Json.toJson(Map("state" -> state.toString))))
+        stateFuture.map(state => Results.Ok(Json.toJson(Map("state" -> state.toString))))
       }
     }
   }
 
   def getWashingMachineConsumption(id: String) = Action.async {
-    findMachineAndDoAsync(id) {
-      machine => {
+    findMachineAndDoAsync(id) { machine =>
+      {
         val powerFuture: Future[Int] = (machine ? WashingMachinePersistentActor.GetTotalPowerConsumptionCmd).mapTo[Int]
-        powerFuture.map( power => Results.Ok(Json.toJson(Map("power" -> power))))
+        powerFuture.map(power => Results.Ok(Json.toJson(Map("power" -> power))))
       }
     }
   }
 
   def startWashingMachine(id: String) = Action {
-    findMachineAndDo(id) {
-      machine => {
+    findMachineAndDo(id) { machine =>
+      {
         machine ! WashingMachinePersistentActor.StartMachineCmd(level = PowerLevel.HIGH, time = DateTime.now())
         Results.Ok
       }
@@ -56,8 +56,8 @@ class WashingMachineController @Inject()(system: ActorSystem, cc: ControllerComp
   }
 
   def capturePowerConsumption(id: String) = Action(validateJson[CapturePowerConsumptionCmd]) { cmd =>
-    findMachineAndDo(id) {
-      machine => {
+    findMachineAndDo(id) { machine =>
+      {
         machine ! WashingMachinePersistentActor.CapturePowerConsumptionCmd(consumption = cmd.body.consumption, time = DateTime.now())
         Results.Ok
       }
@@ -65,8 +65,8 @@ class WashingMachineController @Inject()(system: ActorSystem, cc: ControllerComp
   }
 
   def saveSnapshot(id: String) = Action {
-    findMachineAndDo(id) {
-      machine => {
+    findMachineAndDo(id) { machine =>
+      {
         machine ! WashingMachinePersistentActor.SaveSnapshotCmd
         Results.Ok
       }
@@ -85,7 +85,7 @@ class WashingMachineController @Inject()(system: ActorSystem, cc: ControllerComp
     }
   }
 
-  def findMachineAndDo(id:String)(f: ActorRef => Result): Result = {
+  def findMachineAndDo(id: String)(f: ActorRef => Result): Result = {
     getWashingMachineActor(id) match {
       case Some(machine) =>
         f(machine)
@@ -94,7 +94,7 @@ class WashingMachineController @Inject()(system: ActorSystem, cc: ControllerComp
     }
   }
 
-  def findMachineAndDoAsync(id:String)(f: ActorRef => Future[Result]): Future[Result] = {
+  def findMachineAndDoAsync(id: String)(f: ActorRef => Future[Result]): Future[Result] = {
     getWashingMachineActor(id) match {
       case Some(machine) =>
         f(machine)
@@ -108,4 +108,3 @@ class WashingMachineController @Inject()(system: ActorSystem, cc: ControllerComp
   )
 
 }
-

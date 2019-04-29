@@ -11,4 +11,3 @@ object PowerLevel extends Enumeration {
 object DeviceState extends Enumeration {
   val ON, OFF = Value
 }
-
