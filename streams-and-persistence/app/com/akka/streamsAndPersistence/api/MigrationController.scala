@@ -20,8 +20,8 @@ class MigrationController @Inject()(system: ActorSystem, cc: ControllerComponent
 
   def getTemplateMigrationActors(): Action[AnyContent] = Action.async {
     val result = (migrationSupervisor ? MigrationSupervisorActor.GetAllChildren).mapTo[Seq[String]]
-    result.map {
-      actors => Results.Ok(Json.toJson(actors))
+    result.map { actors =>
+      Results.Ok(Json.toJson(actors))
     }
   }
 
